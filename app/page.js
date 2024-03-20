@@ -1,113 +1,151 @@
-import Image from "next/image";
+"use client"
+import Todo from "@/Components/Todo";
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function Home() {
+
+  // State untuk Form Title dan Description
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+  });
+
+  // State menjabarkan todo di UI Interface
+  const [todoData, setTodoData] = useState([]);
+
+  // Mengambil semua data pada api yang akan di cantumkan ke UI Interface
+  const fetchTodos = async () => {
+    const response = await axios('/api');
+    setTodoData(response.data.todos); // response.data.todos todos karena pada thunder client bernama todos
+  }
+
+  // Delete Button
+  const deleteTodo = async (id) => {
+    const response = await axios.delete('/api', {
+      params: {
+        mongoId: id
+      }
+    })
+    // Keterangan bahwa todo telah berhasil dihapus
+    toast.success(response.data.msg);
+    fetchTodos()
+  }
+
+  // Complete Button
+  const completeTodo = async (id) => {
+    const response = await axios.put('/api', {}, {
+      params: {
+        mongoId: id
+      }
+    })
+    // Keterangan bahwa todo telah berhasil completed
+    toast.success(response.data.msg);
+    // Agar perubahan pada UI Interface bisa terjadi
+    fetchTodos();
+  }
+
+  // Perubahan pada fetchTodos
+  useEffect(() => {
+    fetchTodos();
+  }, []) // [] kosong karena saya mau di execute 1 kali
+
+
+  // Menjabarkan name dan value agar form bekerja sebagaimana mestinya
+  const onChangeHandler = (e) => {
+    const name = e.target.name;
+    const value = e.target.value;
+    setFormData(form => ({ ...form, [name]: value }));
+    console.log(formData);
+  }
+
+  // Saat Klik Button, Website Tidak Akan Ter-Refresh / Ter-Reload
+  const submitHandler = async (e) => {
+    e.preventDefault(); // hindari default behavior dari form submission
+
+    try {
+      // Lakukan request POST ke API
+      const response = await axios.post('/api', formData);
+
+      // Jika respons dari server berhasil diterima, tampilkan notifikasi toast
+      toast.success(response.data.msg);
+
+      // Setelah klik submit button maka kotak title dan description ter-reset
+      setFormData({
+        title: "",
+        description: "",
+      });
+
+      // Menampilkan Todo yang baru di buat ke dalam List Todo di UI Interface
+      await fetchTodos();
+
+    } catch (error) {
+      // Jika terjadi error pada request, tampilkan notifikasi error
+      toast.error("Error");
+    }
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+    <>
+      <ToastContainer theme="dark" />
+      {/* --- onSubmit harus diletakan di form agar berfungsi dengan baik --- */}
+      <form onSubmit={submitHandler} className="flex items-start flex-col gap-1 w-[80%] max-w-[600px] mt-24 px-2 mx-auto">
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+        <input
+          type="text"
+          name="title"
+          placeholder="Enter Title"
+          className="px-3 py-2 border-2 border-s-red-600 w-full"
+          value={formData.title}
+          onChange={onChangeHandler}
         />
+
+        <textarea
+          name="description"
+          placeholder="Enter Description"
+          className="px-3 py-2 border-2 border-s-gray-400 w-full"
+          value={formData.description}
+          onChange={onChangeHandler}></textarea>
+
+        <button
+          type="submit"
+          className="bg-orange-600 py-3 px-11 text-white rounded-md"
+        >Add Todo</button>
+      </form>
+
+      {/* --- Table Todo --- */}
+      <div className="relative overflow-x-auto w-[60%] mx-auto mt-[60px]">
+        <table className="w-full text-sm text-left rtl:text-right dark:text-gray-400">
+          <thead className="text-xs text-gray-900 uppercase bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3">
+                Id
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Title
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Description
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Action
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {todoData.map((item, index) => {
+              {/* --- Menggunakan Props yang akan di lempar ke Todo.Jsx --- */ }
+              return <Todo key={index} id={index} title={item.title} description={item.description} complete={item.isCompleted} mongoId={item._id} deleteTodo={deleteTodo} completeTodo={completeTodo} />
+            })}
+          </tbody>
+        </table>
       </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </>
   );
 }
